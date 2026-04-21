@@ -19,7 +19,7 @@ st.set_page_config(
 # ─── CONFIG (secrets-based) ───────────────────────────────────────────────────
 MAX_TOTAL_MB   = 45
 OLLAMA_HOST    = "https://ollama.com"
-OLLAMA_MODEL   = "gpt-oss:120b-cloud"
+OLLAMA_MODEL   = "glm-4.6:cloud"
 OLLAMA_API_KEY = st.secrets["OLLAMA_API_KEY"]
 
 # ─── CUSTOM CSS ───────────────────────────────────────────────────────────────

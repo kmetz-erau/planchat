@@ -17,7 +17,7 @@ MAX_VISION_PAGES = 8
 PDF_SCALE = 1.25
 JPEG_QUALITY = 78
 OLLAMA_HOST = "https://ollama.com"
-OLLAMA_MODEL = "qwen3-vl:235b-cloud"
+OLLAMA_MODEL = "gemma4:31b-cloud"
 OLLAMA_API_KEY = st.secrets["OLLAMA_API_KEY"]
 
 st.markdown("""

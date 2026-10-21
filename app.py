@@ -13,7 +13,7 @@ from PIL import Image
 st.set_page_config(page_title="PlanChat AI", page_icon="📐", layout="wide")
 
 MAX_TOTAL_MB = 45
-MAX_VISION_PAGES = 8
+MAX_VISION_PAGES = 45
 PDF_SCALE = 1.25
 JPEG_QUALITY = 78
 OLLAMA_HOST = "https://ollama.com"

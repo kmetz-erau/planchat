@@ -13,9 +13,9 @@ from PIL import Image
 st.set_page_config(page_title="PlanChat AI", page_icon="📐", layout="wide")
 
 MAX_TOTAL_MB = 45
-PAGE_BATCH_SIZE = 4
+PAGE_BATCH_SIZE = 8
 PDF_SCALE = 1.25
-JPEG_QUALITY = 78
+JPEG_QUALITY = 68
 OLLAMA_HOST = "https://ollama.com"
 OLLAMA_MODEL = "gemma4:31b-cloud"
 OLLAMA_API_KEY = st.secrets["OLLAMA_API_KEY"]
@@ -160,7 +160,7 @@ def stream_ollama_response(messages: list):
         "model": OLLAMA_MODEL,
         "messages": messages,
         "stream": True,
-        "max_tokens": 800,
+        "max_tokens": 450,
     }
 
     try:
@@ -416,7 +416,13 @@ with right_col:
         for batch_no, page_batch in enumerate(batches, 1):
             batch_text = (
                 f"Analyze pages in batch {batch_no} of {len(batches)} for this question. "
-                "Use only the pages shown in this batch, and cite each observation.\n\n"
+                "Use only the pages shown in this batch. Be concise: return only findings "
+                "that answer the question, with page numbers. Do not repeat the question, "
+                "do not add an introduction, and do not describe unrelated pages. "
+                "For equipment or panel-count questions, separate: (1) unique identifiers, "
+                "(2) occurrences by page, and (3) legend/schedule-only items. Do not count "
+                "a legend, riser, or schedule as a separate installed item unless the question "
+                "specifically asks for listed items. Flag existing/revised status when visible.\n\n"
                 f"Question: {user_text}"
             )
             batch_response = ""

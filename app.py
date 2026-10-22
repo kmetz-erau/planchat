@@ -13,6 +13,7 @@ from PIL import Image
 st.set_page_config(page_title="PlanChat AI", page_icon="📐", layout="wide")
 
 MAX_TOTAL_MB = 45
+PAGE_BATCH_SIZE = 4
 PDF_SCALE = 1.25
 JPEG_QUALITY = 78
 OLLAMA_HOST = "https://ollama.com"
@@ -103,7 +104,7 @@ def process_uploaded_file(uploaded) -> dict | None:
     }
 
 
-def build_ollama_messages(user_text: str) -> list:
+def build_ollama_messages(user_text: str, selected_pages=None) -> list:
     files = st.session_state.uploaded_files
     messages = [{
         "role": "system",
@@ -124,13 +125,17 @@ Only claim what is visible. Flag clearly unsafe conditions."""
             "content": msg["text"],
         })
 
-    # Always send every page from every uploaded file.  The viewer's current
-    # page is only for display and must not limit what the model can inspect.
-    selected = [
-        (file["name"], page_idx, encoded)
-        for file in files
-        for page_idx, encoded in enumerate(file["pages_b64"])
-    ]
+    # The viewer's current page is only for display.  When no batch is passed,
+    # include every page; the caller may pass a smaller batch to avoid an
+    # oversized vision request.
+    if selected_pages is None:
+        selected = [
+            (file["name"], page_idx, encoded)
+            for file in files
+            for page_idx, encoded in enumerate(file["pages_b64"])
+        ]
+    else:
+        selected = selected_pages
 
     content = []
     for image_no, (name, page_idx, encoded) in enumerate(selected, 1):
@@ -396,15 +401,45 @@ with right_col:
             "timestamp": datetime.now().timestamp(),
         })
 
+        all_pages = [
+            (file["name"], page_idx, encoded)
+            for file in st.session_state.uploaded_files
+            for page_idx, encoded in enumerate(file["pages_b64"])
+        ]
         full_response = ""
         response_placeholder = chat_container.empty()
-        with st.spinner("Thinking..."):
-            for chunk in stream_ollama_response(build_ollama_messages(user_text)):
-                full_response += chunk
+        batches = [
+            all_pages[start:start + PAGE_BATCH_SIZE]
+            for start in range(0, len(all_pages), PAGE_BATCH_SIZE)
+        ]
+
+        for batch_no, page_batch in enumerate(batches, 1):
+            batch_text = (
+                f"Analyze pages in batch {batch_no} of {len(batches)} for this question. "
+                "Use only the pages shown in this batch, and cite each observation.\n\n"
+                f"Question: {user_text}"
+            )
+            batch_response = ""
+            response_placeholder.markdown(
+                f'<div class="model-bubble">Reviewing page batch '
+                f'{batch_no}/{len(batches)}…</div>',
+                unsafe_allow_html=True,
+            )
+            for chunk in stream_ollama_response(
+                build_ollama_messages(batch_text, selected_pages=page_batch)
+            ):
+                batch_response += chunk
                 response_placeholder.markdown(
-                    f'<div class="model-bubble">{render_with_citations(full_response)} ▌</div>',
+                    f'<div class="model-bubble">Reviewing page batch '
+                    f'{batch_no}/{len(batches)}…<br><br>'
+                    f'{render_with_citations(batch_response)} ▌</div>',
                     unsafe_allow_html=True,
                 )
+            full_response += (
+                f"\n\n[BATCH {batch_no} — pages "
+                f"{page_batch[0][1] + 1}–{page_batch[-1][1] + 1}]\n"
+                f"{batch_response}"
+            )
 
         response_placeholder.markdown(
             f'<div class="model-bubble">{render_with_citations(full_response)}</div>',

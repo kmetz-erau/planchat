@@ -13,7 +13,6 @@ from PIL import Image
 st.set_page_config(page_title="PlanChat AI", page_icon="📐", layout="wide")
 
 MAX_TOTAL_MB = 45
-MAX_VISION_PAGES = 8
 PDF_SCALE = 1.25
 JPEG_QUALITY = 78
 OLLAMA_HOST = "https://ollama.com"
@@ -41,7 +40,6 @@ def init_state():
         # script after every widget interaction, so one global page index can
         # otherwise make the viewer jump back to the cover page.
         "page_by_file": {},
-        "analyze_all_pages": False,
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -126,20 +124,13 @@ Only claim what is visible. Flag clearly unsafe conditions."""
             "content": msg["text"],
         })
 
-    selected = []
-    if st.session_state.analyze_all_pages:
-        for file in files:
-            for page_idx, encoded in enumerate(file["pages_b64"]):
-                selected.append((file["name"], page_idx, encoded))
-                if len(selected) >= MAX_VISION_PAGES:
-                    break
-            if len(selected) >= MAX_VISION_PAGES:
-                break
-    elif files:
-        file_idx = min(st.session_state.active_file_idx, len(files) - 1)
-        file = files[file_idx]
-        page_idx = min(st.session_state.active_page_idx, file["page_count"] - 1)
-        selected.append((file["name"], page_idx, file["pages_b64"][page_idx]))
+    # Always send every page from every uploaded file.  The viewer's current
+    # page is only for display and must not limit what the model can inspect.
+    selected = [
+        (file["name"], page_idx, encoded)
+        for file in files
+        for page_idx, encoded in enumerate(file["pages_b64"])
+    ]
 
     content = []
     for image_no, (name, page_idx, encoded) in enumerate(selected, 1):
@@ -259,12 +250,6 @@ with st.sidebar:
 
     files = st.session_state.uploaded_files
     if files:
-        st.session_state.analyze_all_pages = st.checkbox(
-            "Analyze all pages",
-            value=st.session_state.analyze_all_pages,
-            help=f"Send at most {MAX_VISION_PAGES} pages per question.",
-        )
-
         st.markdown("### Loaded files")
         for i, file in enumerate(files):
             col_a, col_b = st.columns([4, 1])
